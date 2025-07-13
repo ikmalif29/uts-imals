@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect } from 'react';
 import { Info, Heart, MessageCircle, ShoppingCart, X, Plus, Minus } from 'lucide-react';
 
@@ -9,8 +10,9 @@ const Cars = ({ cars }) => {
     const [commentCar, setCommentCar] = useState(null);
     const [commentText, setCommentText] = useState('');
     const [comments, setComments] = useState({});
+    const [dataCars, setDataCars] = useState([]);
+    const [sortOption, setSortOption] = useState('');
 
-    // Load cart data from localStorage on component mount
     useEffect(() => {
         try {
             const cartData = JSON.parse(localStorage.getItem("cart")) || {};
@@ -20,7 +22,6 @@ const Cars = ({ cars }) => {
         }
     }, []);
 
-    // Save cart data to localStorage whenever cartItems changes
     useEffect(() => {
         try {
             localStorage.setItem("cart", JSON.stringify(cartItems));
@@ -28,6 +29,20 @@ const Cars = ({ cars }) => {
             console.error("Error saving cart to localStorage:", error);
         }
     }, [cartItems]);
+
+    // Tampilkan semua data saat pertama kali load
+    const fetchData = () => {
+        setDataCars(cars);
+    }
+    
+    useEffect(() => {
+        fetchData();
+    }, [cars]);
+
+    // Sort ulang data jika sortOption berubah
+    useEffect(() => {
+        setDataCars(prev => sortData(sortOption, prev));
+    }, [sortOption]);
 
     const handleLike = (carId) => {
         const newLikedCars = new Set(likedCars);
@@ -42,13 +57,10 @@ const Cars = ({ cars }) => {
     const handleAddToCart = (carId) => {
         const car = cars.find(c => c.id === carId);
         if (car) {
-            setCartItems(prev => {
-                const newCartItems = {
-                    ...prev,
-                    [carId]: (prev[carId] || 0) + 1
-                };
-                return newCartItems;
-            });
+            setCartItems(prev => ({
+                ...prev,
+                [carId]: (prev[carId] || 0) + 1
+            }));
         }
     };
 
@@ -58,12 +70,9 @@ const Cars = ({ cars }) => {
                 ...prev,
                 [carId]: Math.max((prev[carId] || 0) - 1, 0)
             };
-
-            // Remove item from cart if quantity becomes 0
             if (newCartItems[carId] === 0) {
                 delete newCartItems[carId];
             }
-
             return newCartItems;
         });
     };
@@ -100,17 +109,62 @@ const Cars = ({ cars }) => {
         }).format(price);
     };
 
+    const handleChange = (e) => {
+        const keyword = e;
+        const filteredData = cars.filter(car =>
+            car.name.toLowerCase().includes(keyword.toLowerCase()) ||
+            car.color.toLowerCase().includes(keyword.toLowerCase()) ||
+            car.price.toString().includes(keyword)
+        );
+        setDataCars(sortData(sortOption, filteredData));
+    };
+
+    const sortData = (option, data) => {
+        const sorted = [...data];
+        if (option === 'name-asc') {
+            sorted.sort((a, b) => a.name.localeCompare(b.name));
+        } else if (option === 'name-desc') {
+            sorted.sort((a, b) => b.name.localeCompare(a.name));
+        } else if (option === 'price-asc') {
+            sorted.sort((a, b) => a.price - b.price);
+        } else if (option === 'price-desc') {
+            sorted.sort((a, b) => b.price - a.price);
+        }else if(option === ''){
+            fetchData();
+        }
+        return sorted;
+    };
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 py-12 px-4">
             <div className="max-w-7xl mx-auto">
-                {/* Header */}
+                <input
+                    type="text"
+                    className='w-full py-2 px-4 mb-4 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500'
+                    onChange={(e) => handleChange(e.target.value)}
+                    placeholder="Search car by name, color, or price"
+                />
+
+                {/* Dropdown Sorting */}
+                <div className="flex justify-end mb-6">
+                    <select
+                        onChange={(e) => setSortOption(e.target.value)}
+                        className="py-2 px-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                        <option value="">Sort By</option>
+                        <option value="name-asc">Name A-Z</option>
+                        <option value="name-desc">Name Z-A</option>
+                        <option value="price-asc">Price Low to High</option>
+                        <option value="price-desc">Price High to Low</option>
+                    </select> 
+                </div>
+
                 <div className="text-center mb-12">
                     <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
                         Premium Cars Collection
                     </h1>
                     <p className="text-gray-600 text-lg">Discover luxury and performance in every drive</p>
 
-                    {/* Cart Badge */}
                     <div className="fixed top-6 right-6 z-50">
                         <div className="relative">
                             <div className="bg-white rounded-full p-3 shadow-lg border">
@@ -127,7 +181,7 @@ const Cars = ({ cars }) => {
 
                 {/* Cars Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-                    {cars.map((car) => (
+                    {dataCars.map((car) => (
                         <div
                             key={car.id}
                             className="group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 overflow-hidden border border-gray-100"
